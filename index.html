@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Faceoff Trainer" />
+  <title>Faceoff Trainer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f5f5f5;
+      --bg-tertiary: #ebebeb;
+      --text-primary: #1a1a1a;
+      --text-secondary: #6b6b6b;
+      --border: rgba(0,0,0,0.12);
+      --border-med: rgba(0,0,0,0.22);
+      --radius-md: 10px;
+      --radius-lg: 14px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1c1c1e;
+        --bg-secondary: #2c2c2e;
+        --bg-tertiary: #3a3a3c;
+        --text-primary: #f2f2f7;
+        --text-secondary: #8e8e93;
+        --border: rgba(255,255,255,0.10);
+        --border-med: rgba(255,255,255,0.20);
+      }
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg-tertiary);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      color: var(--text-primary);
+    }
+
+    #app {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: env(safe-area-inset-top, 20px) 20px env(safe-area-inset-bottom, 20px);
+      padding-top: max(env(safe-area-inset-top), 28px);
+      padding-bottom: max(env(safe-area-inset-bottom), 24px);
+      gap: 16px;
+    }
+
+    #header {
+      text-align: center;
+      width: 100%;
+    }
+    #header h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.01em;
+    }
+    #header p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    #phase-display {
+      width: 100%;
+      max-width: 400px;
+      min-height: 190px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      transition: background 0.25s, border-color 0.25s;
+    }
+
+    #phase-display.phase-down  { background: #dceefb; border-color: #4a9fd4; }
+    #phase-display.phase-set   { background: #fdf0d5; border-color: #e09820; }
+    #phase-display.phase-whistle { background: #dff0d0; border-color: #5a9e2f; }
+
+    @media (prefers-color-scheme: dark) {
+      #phase-display.phase-down    { background: #0d3a60; border-color: #4a9fd4; }
+      #phase-display.phase-set     { background: #4a2e00; border-color: #e09820; }
+      #phase-display.phase-whistle { background: #1e3d0a; border-color: #5a9e2f; }
+    }
+
+    #phase-label {
+      font-size: 54px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: var(--text-primary);
+      transition: color 0.2s;
+      user-select: none;
+      line-height: 1.1;
+    }
+    #phase-display.phase-down    #phase-label { color: #1565a8; }
+    #phase-display.phase-set     #phase-label { color: #8a5c00; }
+    #phase-display.phase-whistle #phase-label { color: #2e6e10; }
+
+    @media (prefers-color-scheme: dark) {
+      #phase-display.phase-down    #phase-label { color: #90caee; }
+      #phase-display.phase-set     #phase-label { color: #f5c050; }
+      #phase-display.phase-whistle #phase-label { color: #90d060; }
+    }
+
+    #phase-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    #dots {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 400px;
+      width: 100%;
+      padding: 0 4px;
+    }
+    .dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-med);
+      background: var(--bg-primary);
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .dot.done   { background: #5a9e2f; border-color: #5a9e2f; }
+    .dot.active { background: #fdf0d5; border-color: #e09820; }
+
+    @media (prefers-color-scheme: dark) {
+      .dot.done   { background: #78c840; border-color: #78c840; }
+      .dot.active { background: #4a2e00; border-color: #e09820; }
+    }
+
+    #settings {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 16px;
+      border-radius: var(--radius-md);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+    }
+    .setting-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    .setting-val {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .adj-btn {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-med);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-primary);
+      user-select: none;
+      transition: background 0.15s;
+      line-height: 1;
+    }
+    .adj-btn:active { background: var(--bg-tertiary); transform: scale(0.93); }
+
+    #controls {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #start-btn {
+      width: 100%;
+      padding: 18px;
+      border-radius: var(--radius-lg);
+      background: #1a6bbf;
+      color: #fff;
+      border: none;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #start-btn:active { transform: scale(0.97); }
+    #start-btn.running { background: #b92929; }
+
+    #reset-btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-med);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #reset-btn:active { background: var(--bg-secondary); }
+
+    #timing-info {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div id="header">
+    <h1>Faceoff Trainer</h1>
+    <p>Independent training tool</p>
+  </div>
+
+  <div id="phase-display" class="phase-ready">
+    <div id="phase-label">GET READY</div>
+    <div id="phase-sub">tap start to begin</div>
+  </div>
+
+  <div id="dots"></div>
+
+  <div id="settings">
+    <div class="setting-row">
+      <span class="setting-label">Reps per set</span>
+      <div class="setting-val">
+        <button class="adj-btn" id="reps-down">−</button>
+        <span id="reps-val">10</span>
+        <button class="adj-btn" id="reps-up">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">Whistle delay (random)</span>
+      <div class="setting-val">
+        <button class="adj-btn" id="delay-down">−</button>
+        <span id="delay-val">1–3s</span>
+        <button class="adj-btn" id="delay-up">+</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">Rest between reps</span>
+      <div class="setting-val">
+        <button class="adj-btn" id="pause-down">−</button>
+        <span id="pause-val">3s</span>
+        <button class="adj-btn" id="pause-up">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button id="start-btn">Start Set</button>
+    <button id="reset-btn">Reset</button>
+  </div>
+
+  <div id="timing-info">Down → Set → random whistle → rest → repeat</div>
+
+</div>
+
+<script>
+  const DELAY_RANGES = [
+    {label:'0.5–1.5s', min:500,  max:1500},
+    {label:'1–2s',     min:1000, max:2000},
+    {label:'1–3s',     min:1000, max:3000},
+    {label:'1–4s',     min:1000, max:4000},
+    {label:'2–5s',     min:2000, max:5000},
+  ];
+  const PAUSE_OPTIONS = [2,3,4,5,6,8];
+
+  let totalReps = 10;
+  let delayIdx  = 2;
+  let pauseIdx  = 1;
+  let currentRep = 0;
+  let running = false;
+  let timeouts = [];
+
+  const phaseDisplay = document.getElementById('phase-display');
+  const phaseLabel   = document.getElementById('phase-label');
+  const phaseSub     = document.getElementById('phase-sub');
+  const dotsEl       = document.getElementById('dots');
+  const startBtn     = document.getElementById('start-btn');
+  const resetBtn     = document.getElementById('reset-btn');
+
+  function updateSettings() {
+    document.getElementById('reps-val').textContent  = totalReps;
+    document.getElementById('delay-val').textContent = DELAY_RANGES[delayIdx].label;
+    document.getElementById('pause-val').textContent = PAUSE_OPTIONS[pauseIdx] + 's';
+    buildDots();
+  }
+
+  function buildDots() {
+    dotsEl.innerHTML = '';
+    for (let i = 0; i < totalReps; i++) {
+      const d = document.createElement('div');
+      d.className = 'dot' +
+        (i < currentRep ? ' done' : (i === currentRep && running ? ' active' : ''));
+      dotsEl.appendChild(d);
+    }
+  }
+
+  function setPhase(cls, label, sub) {
+    phaseDisplay.className = 'phase-' + cls;
+    phaseLabel.textContent = label;
+    phaseSub.textContent   = sub;
+  }
+
+  function clearAll() { timeouts.forEach(clearTimeout); timeouts = []; }
+
+  function schedule(fn, delay) {
+    const t = setTimeout(fn, delay);
+    timeouts.push(t);
+    return t;
+  }
+
+  function rand(min, max) { return min + Math.random() * (max - min); }
+
+  // ── Audio ──────────────────────────────────────────────────────────────────
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let actx = null;
+
+  function ctx() {
+    if (!actx) actx = new AudioCtx();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+
+  function tone(freq, dur, type = 'sine', vol = 0.35) {
+    try {
+      const c = ctx();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type;
+      o.frequency.setValueAtTime(freq, c.currentTime);
+      g.gain.setValueAtTime(vol, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      o.start(c.currentTime); o.stop(c.currentTime + dur);
+    } catch(e) {}
+  }
+
+  function playDown()    { tone(200, 0.18, 'sine', 0.3); }
+  function playSet()     { tone(320, 0.18, 'sine', 0.3); }
+
+  function playWhistle() {
+    try {
+      const c = ctx();
+      const dur = 0.65;
+      [[2800,3200,2900,0.14],[3500,4000,3600,0.07]].forEach(([f0,f1,f2,v]) => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.connect(g); g.connect(c.destination);
+        o.type = 'square';
+        o.frequency.setValueAtTime(f0, c.currentTime);
+        o.frequency.setValueAtTime(f1, c.currentTime + 0.06);
+        o.frequency.setValueAtTime(f2, c.currentTime + 0.22);
+        g.gain.setValueAtTime(v, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+        o.start(c.currentTime); o.stop(c.currentTime + dur);
+      });
+    } catch(e) {}
+  }
+
+  function playComplete() {
+    tone(440, 0.14, 'sine', 0.28);
+    setTimeout(() => tone(554, 0.14, 'sine', 0.28), 160);
+    setTimeout(() => tone(660, 0.38, 'sine', 0.32), 320);
+  }
+
+  // ── Rep sequence ────────────────────────────────────────────────────────────
+  function runRep(rep) {
+    currentRep = rep;
+    buildDots();
+    setPhase('down', 'DOWN', 'get in position');
+    playDown();
+
+    const range = DELAY_RANGES[delayIdx];
+    const pause = PAUSE_OPTIONS[pauseIdx];
+
+    schedule(() => {
+      setPhase('set', 'SET', 'ready…');
+      playSet();
+
+      schedule(() => {
+        setPhase('whistle', 'WHISTLE!', 'fight!');
+        playWhistle();
+
+        const next = rep + 1;
+        if (next < totalReps) {
+          schedule(() => {
+            setPhase('ready', 'REST', 'next rep in ' + pause + 's');
+            schedule(() => runRep(next), (pause - 1) * 1000);
+          }, 900);
+        } else {
+          schedule(() => {
+            running = false;
+            currentRep = totalReps;
+            buildDots();
+            setPhase('ready', 'SET DONE!', totalReps + ' reps complete');
+            playComplete();
+            startBtn.textContent = 'Start Set';
+            startBtn.classList.remove('running');
+          }, 1200);
+        }
+      }, rand(range.min, range.max));
+
+    }, 1000);
+  }
+
+  // ── Controls ────────────────────────────────────────────────────────────────
+  startBtn.addEventListener('click', () => {
+    ctx(); // unlock audio on first tap
+    if (running) {
+      clearAll(); running = false; currentRep = 0; buildDots();
+      setPhase('ready', 'GET READY', 'tap start to begin');
+      startBtn.textContent = 'Start Set';
+      startBtn.classList.remove('running');
+      return;
+    }
+    running = true; currentRep = 0;
+    startBtn.textContent = 'Stop';
+    startBtn.classList.add('running');
+    runRep(0);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    clearAll(); running = false; currentRep = 0; buildDots();
+    setPhase('ready', 'GET READY', 'tap start to begin');
+    startBtn.textContent = 'Start Set';
+    startBtn.classList.remove('running');
+  });
+
+  document.getElementById('reps-down').addEventListener('click', () => { if (!running && totalReps > 1)  { totalReps--;  updateSettings(); } });
+  document.getElementById('reps-up').addEventListener('click',   () => { if (!running && totalReps < 20) { totalReps++;  updateSettings(); } });
+  document.getElementById('delay-down').addEventListener('click', () => { if (!running && delayIdx > 0)   { delayIdx--;   updateSettings(); } });
+  document.getElementById('delay-up').addEventListener('click',   () => { if (!running && delayIdx < DELAY_RANGES.length-1) { delayIdx++; updateSettings(); } });
+  document.getElementById('pause-down').addEventListener('click', () => { if (!running && pauseIdx > 0)   { pauseIdx--;   updateSettings(); } });
+  document.getElementById('pause-up').addEventListener('click',   () => { if (!running && pauseIdx < PAUSE_OPTIONS.length-1) { pauseIdx++; updateSettings(); } });
+
+  updateSettings();
+  setPhase('ready', 'GET READY', 'tap start to begin');
+</script>
+</body>
+</html>
